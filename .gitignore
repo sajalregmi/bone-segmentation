@@ -7,8 +7,8 @@ __pycache__/
 *.so
 
 # EXclude DICOM Images - Add these from google drive locally 
-DICOM_IMAGES
-.dcm
+DICOM_IMAGES/
+*.dcm
 
 # Distribution / packaging
 .Python
