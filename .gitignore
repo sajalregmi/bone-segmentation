@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+# EXclude DICOM Images - Add these from google drive locally 
+DICOM_IMAGES
+.dcm
+
 # Distribution / packaging
 .Python
 build/
