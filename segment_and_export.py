@@ -61,7 +61,6 @@ def process_and_save_slices(input_folder, output_folder,
         if f.lower().endswith(".dcm")
     ]
 
-    # Sort the files by InstanceNumber or some criterion so slices are in order
     def get_instance_number(filepath):
         ds = pydicom.dcmread(filepath, stop_before_pixels=True)
         return int(ds.InstanceNumber) if 'InstanceNumber' in ds else 0
@@ -79,7 +78,7 @@ def process_and_save_slices(input_folder, output_folder,
                                                   lower_hu=lower_hu,
                                                   upper_hu=upper_hu)
 
-        if i == 0:
+        if i == 30:
             plt.figure(figsize=(15,5))
             plt.subplot(1,3,1)
             plt.title("Original HU")
