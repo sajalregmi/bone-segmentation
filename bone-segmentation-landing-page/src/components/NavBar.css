@@ -1,0 +1,32 @@
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #ffffff;
+    padding: 1rem 2rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+  
+  .nav-brand {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  .nav-buttons {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .nav-button {
+    padding: 0.5rem 1rem;
+    border: 1px solid #333;
+    background-color: #fff;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .nav-button:hover {
+    background-color: #f0f0f0;
+  }
+  
