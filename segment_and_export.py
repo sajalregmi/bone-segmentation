@@ -13,6 +13,8 @@ def convert_to_hu(dicom_data):
     image = dicom_data.pixel_array.astype(np.float64)
     intercept = dicom_data.RescaleIntercept
     slope = dicom_data.RescaleSlope
+    print("Slope", slope)
+    print("Intercept", intercept)
     
     if slope != 1:
         image = slope * image
@@ -20,7 +22,7 @@ def convert_to_hu(dicom_data):
 
     return image
 
-def segment_bone_hu(image_hu, lower_hu=300, upper_hu=2000):
+def segment_bone_hu(image_hu, lower_hu, upper_hu):
     """
     1. Threshold HU into [lower_hu, upper_hu]
     2. Morphological closing to remove small holes
@@ -49,7 +51,7 @@ def hu_to_original_scale(segmented_hu, dicom_data):
     return pixel_original.astype(np.int16)
 
 def process_and_save_slices(input_folder, output_folder,
-                            lower_hu=300, upper_hu=2000):
+                            lower_hu, upper_hu):
     """
     1. Load all DICOM files from `input_folder`.
     2. Segment bones by HU threshold.
@@ -116,14 +118,14 @@ def process_and_save_slices(input_folder, output_folder,
     print(f"All segmented slices saved to: {output_folder}")
 
 def main():
-    input_folder = "DICOM_IMAGES/Ankle"          # DICOM_FOLDER
-    output_folder = "DICOM_IMAGES/Ankle_segmented"
+    input_folder = "DICOM_IMAGES/CBCT_36_MALE"
+    output_folder = "DICOM_IMAGES/CBCT_36_MALE_150"
 
     process_and_save_slices(
         input_folder, 
         output_folder,
-        lower_hu=200,
-        upper_hu=2000
+        lower_hu=150,
+        upper_hu=5000
     )
 
 if __name__ == "__main__":
