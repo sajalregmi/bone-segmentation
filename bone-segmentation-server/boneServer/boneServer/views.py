@@ -113,7 +113,7 @@ def login(request):
         "id": user.id,
         "username": user.username,
         "role": user_profile.role,
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1),
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=10),
     }
     token = pyjwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
     return JsonResponse({"access_token": token})
