@@ -1,35 +1,156 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // for navigating programmatically
 import './NavBar.css';
 
-const NavBar: React.FC = () => {
+const NavBar = () => {
+  const navigate = useNavigate();
+
+  // Physician Login States
   const [showPhysicianModal, setShowPhysicianModal] = useState(false);
-  const [showPatientModal, setShowPatientModal] = useState(false);
   const [physicianEmail, setPhysicianEmail] = useState('');
   const [physicianPassword, setPhysicianPassword] = useState('');
+
+  // Patient Login States
+  const [showPatientModal, setShowPatientModal] = useState(false);
   const [patientEmail, setPatientEmail] = useState('');
   const [patientPassword, setPatientPassword] = useState('');
+
+  // Signup States
+  const [showSignupModal, setShowSignupModal] = useState(false);
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [signupRole, setSignupRole] = useState('physician'); // default or 'patient'
+
+  // ---------------------
+  // HANDLERS: PHYSICIAN LOGIN
+  // ---------------------
   const handlePhysicianLoginClick = () => {
     setShowPhysicianModal(true);
   };
   const closePhysicianModal = () => {
     setShowPhysicianModal(false);
   };
-  const handlePhysicianLoginSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handlePhysicianLoginSubmit = (e: any) => {
     e.preventDefault();
-    alert(`Physician Login:\nEmail: ${physicianEmail}\nPassword: ${physicianPassword}`);
-    setShowPhysicianModal(false);
+
+    // SAMPLE login fetch
+    fetch('http://127.0.0.1:8000/login/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: physicianEmail,
+        password: physicianPassword
+      })
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error('Physician login failed');
+        }
+        return res.json();
+      })
+      .then((data) => {
+        // data could contain a token, role, etc.
+        // for demonstration, assume data.role is returned
+        alert(`Logged in as physician: ${physicianEmail}`);
+        setShowPhysicianModal(false);
+
+        // Suppose the role is returned as data.role; if it's "physician", go to /physicians/home
+        if (data.role === 'physician') {
+          navigate('/physicians/home');
+        } else if (data.role === 'patient') {
+          // navigate('/patients/home');
+          // or handle error for mismatched role
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        alert('Login failed!');
+      });
   };
 
+  // ---------------------
+  // HANDLERS: PATIENT LOGIN
+  // ---------------------
   const handlePatientLoginClick = () => {
     setShowPatientModal(true);
   };
   const closePatientModal = () => {
     setShowPatientModal(false);
   };
-  const handlePatientLoginSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handlePatientLoginSubmit = (e: any) => {
     e.preventDefault();
-    alert(`Patient Login:\nEmail: ${patientEmail}\nPassword: ${patientPassword}`);
-    setShowPatientModal(false);
+
+    // SAMPLE login fetch
+    fetch('http://127.0.0.1:8000/login/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: patientEmail,
+        password: patientPassword
+      })
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error('Patient login failed');
+        }
+        return res.json();
+      })
+      .then((data) => {
+        alert(`Logged in as patient: ${patientEmail}`);
+        setShowPatientModal(false);
+
+        // if role is "patient", go to /patients/home
+        if (data.role === 'patient') {
+          // navigate('/patients/home');
+          // For demonstration, just show an alert:
+          alert('Navigating to patient home page...');
+        } else if (data.role === 'physician') {
+          // navigate('/physicians/home');
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        alert('Login failed!');
+      });
+  };
+
+  // ---------------------
+  // HANDLERS: SIGNUP
+  // ---------------------
+  const handleSignupClick = () => {
+    setShowSignupModal(true);
+  };
+  const closeSignupModal = () => {
+    setShowSignupModal(false);
+  };
+  const handleSignupSubmit = (e: any) => {
+    e.preventDefault();
+
+    // SAMPLE signup fetch
+    fetch('http://127.0.0.1:8000/signup/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: signupEmail,
+        password: signupPassword,
+        role: signupRole
+      })
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error('Signup failed');
+        }
+        return res.json();
+      })
+      .then((data) => {
+        alert('Signup successful!');
+        // Optionally auto-login or do something with data
+        setShowSignupModal(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        alert('Signup failed!');
+      });
   };
 
   return (
@@ -43,9 +164,13 @@ const NavBar: React.FC = () => {
           <button className="nav-button" onClick={handlePatientLoginClick}>
             Login as Patient
           </button>
+          <button className="nav-button" onClick={handleSignupClick}>
+            Sign Up
+          </button>
         </div>
       </nav>
 
+      {/* Physician Login Modal */}
       {showPhysicianModal && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -117,6 +242,57 @@ const NavBar: React.FC = () => {
 
               <button type="submit" className="submit-button">
                 Login
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Signup Modal */}
+      {showSignupModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <button className="close-button" onClick={closeSignupModal}>
+              &times;
+            </button>
+            <h2>Sign Up</h2>
+            <form onSubmit={handleSignupSubmit}>
+              <div className="form-group">
+                <label htmlFor="signupEmail">Email</label>
+                <input
+                  id="signupEmail"
+                  type="email"
+                  value={signupEmail}
+                  onChange={(e) => setSignupEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="signupPassword">Password</label>
+                <input
+                  id="signupPassword"
+                  type="password"
+                  value={signupPassword}
+                  onChange={(e) => setSignupPassword(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="signupRole">Role</label>
+                <select
+                  id="signupRole"
+                  value={signupRole}
+                  onChange={(e) => setSignupRole(e.target.value)}
+                >
+                  <option value="physician">Physician</option>
+                  <option value="patient">Patient</option>
+                </select>
+              </div>
+
+              <button type="submit" className="submit-button">
+                Sign Up
               </button>
             </form>
           </div>

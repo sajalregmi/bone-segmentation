@@ -1,0 +1,16 @@
+.physician-home-container {
+    display: flex;
+    min-height: 80vh;
+  }
+  
+  .left-panel {
+    flex: 1;
+    border-right: 1px solid #ccc;
+    padding: 20px;
+  }
+  
+  .right-panel {
+    flex: 2;
+    padding: 20px;
+  }
+  
