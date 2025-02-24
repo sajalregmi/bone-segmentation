@@ -9,7 +9,7 @@ import jwt as pyjwt
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
 from .models import UserProfile, SegmentationRecord
 from django.utils import timezone
@@ -243,3 +243,81 @@ def get_scans(request):
         })
 
     return JsonResponse({"segmentations": results}, status=200)
+
+
+@csrf_exempt
+def get_dicom_files(request, seg_id):
+    """
+    GET endpoint to list all .dcm files in the segmentation's absolute output folder.
+    Example response:
+      { "dicom_files": ["1.dcm", "2.dcm", "3.dcm"] }
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "GET method required"}, status=405)
+
+    # Decode JWT (reusing your existing decode_jwt_token function)
+    current_user, error_msg = decode_jwt_token(request)
+    if current_user is None:
+        return JsonResponse({"error": error_msg}, status=401)
+
+    # Check if user is physician
+    try:
+        if current_user.userprofile.role.lower() != "physician":
+            return JsonResponse({"error": "Only physicians can view scans."}, status=403)
+    except UserProfile.DoesNotExist:
+        return JsonResponse({"error": "User profile not found"}, status=404)
+
+    # Fetch the SegmentationRecord
+    try:
+        seg = SegmentationRecord.objects.get(id=seg_id, physician=current_user)
+    except SegmentationRecord.DoesNotExist:
+        return JsonResponse({"error": "Segmentation not found"}, status=404)
+
+    absolute_folder = seg.output_folder_path  # Already stored as absolute
+    if not os.path.exists(absolute_folder):
+        return JsonResponse({"error": "Output folder does not exist on server"}, status=404)
+
+    # List only .dcm files
+    all_files = os.listdir(absolute_folder)
+    dicom_files = [f for f in all_files if f.lower().endswith('.dcm')]
+
+    return JsonResponse({"dicom_files": dicom_files}, status=200)
+
+
+@csrf_exempt
+def serve_dicom_file(request, seg_id, filename):
+    """
+    GET endpoint to return a single DICOM file from the absolute path on disk.
+    E.g. /dicoms/<seg_id>/<filename>
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "GET method required"}, status=405)
+
+    # Decode JWT
+    current_user, error_msg = decode_jwt_token(request)
+    if current_user is None:
+        return JsonResponse({"error": error_msg}, status=401)
+
+    # Check physician
+    try:
+        if current_user.userprofile.role.lower() != "physician":
+            return JsonResponse({"error": "Only physicians can view scans."}, status=403)
+    except UserProfile.DoesNotExist:
+        return JsonResponse({"error": "User profile not found"}, status=404)
+
+    # Fetch segmentation record
+    try:
+        seg = SegmentationRecord.objects.get(id=seg_id, physician=current_user)
+    except SegmentationRecord.DoesNotExist:
+        return JsonResponse({"error": "Segmentation not found"}, status=404)
+
+    # Construct absolute file path
+    absolute_folder = seg.output_folder_path  # e.g. /Users/.../Ankle_segmented...
+    dicom_path = os.path.join(absolute_folder, filename)
+
+    if not os.path.exists(dicom_path):
+        raise Http404("DICOM file not found: " + filename)
+
+    # Return the raw DICOM file
+    # Content type isn't strictly required but can be "application/dicom" or "application/octet-stream"
+    return FileResponse(open(dicom_path, 'rb'), content_type='application/dicom')

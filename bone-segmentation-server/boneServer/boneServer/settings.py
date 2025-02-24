@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,6 +22,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "django-insecure-=+)0dvs-&0h@iirl(tki^@a0$!m3!wad*q=g#%g338t846wwnm"
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+MEDIA_URL = '/media/'  # URL prefix for serving media files
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # file system path to store files
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True

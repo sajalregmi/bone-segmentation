@@ -16,7 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from .views import signup, login, segment_images, get_scans
+from django.conf import settings
+from django.conf.urls.static import static
+
+
+from .views import signup, login, segment_images, get_scans, get_dicom_files, serve_dicom_file
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -24,5 +28,10 @@ urlpatterns = [
     path("login/", login, name="login"),
     path("segment-images/", segment_images, name="segment_images"),
     path("get-scans/", get_scans, name="get_scans"),
+    path('get-dicom-files/<int:seg_id>/', get_dicom_files, name='get_dicom_files'),
+    path('dicoms/<int:seg_id>/<str:filename>/', serve_dicom_file, name='serve_dicom_file'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
