@@ -1,7 +1,5 @@
-// src/pages/PhysiciansHome.tsx
 import React, { FC, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
 
 import './css/PhysiciansHome.css';
 import Cornerstone3DStackViewer from '../components/CornerstoneViewer';
@@ -15,13 +13,11 @@ interface Scan {
   lower_threshold: number;
 }
 
-// The JSON returned by GET /get-scans/ is { segmentations: Scan[] }
 const PhysiciansHome: FC = () => {
   const navigate = useNavigate();
   const [scans, setScans] = useState<Scan[]>([]);
   const [imageIds, setImageIds] = useState<string[]>([]);
 
-  // 1. Load scans on component mount
   useEffect(() => {
     const getScans = async () => {
       try {
@@ -40,7 +36,6 @@ const PhysiciansHome: FC = () => {
           }
           return;
         }
-
         const data = await res.json();
         setScans(data.segmentations);
       } catch (error) {
@@ -50,10 +45,8 @@ const PhysiciansHome: FC = () => {
     getScans();
   }, [navigate]);
 
-  // 2. On click of a scan
   const handleScanClick = async (scan: Scan) => {
     try {
-      // Fetch list of .dcm from /get-dicom-files/<seg_id>
       const url = `http://localhost:8000/get-dicom-files/${scan.segmentation_id}/`;
       const res = await fetch(url, {
         headers: {
@@ -66,16 +59,11 @@ const PhysiciansHome: FC = () => {
         return;
       }
       const data = await res.json();
-
-
       const dicomFilenames: string[] = data.dicom_files;
-
 
       const constructedImageIds = dicomFilenames.map((filename) => {
         return `wadouri:http://localhost:8000/dicoms/${scan.segmentation_id}/${filename}/`;
       });
-      
-
 
       setImageIds(constructedImageIds);
     } catch (error) {
@@ -86,6 +74,8 @@ const PhysiciansHome: FC = () => {
   const handleScanUpload = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     alert('Scan uploaded (dummy handler)');
+    // In real implementation, handle the form data, 
+    // call your upload endpoint, etc.
   };
 
   return (
@@ -95,30 +85,26 @@ const PhysiciansHome: FC = () => {
         <h2>Latest Scans</h2>
         <ul>
           {scans.map((scan) => (
-            <li
-              key={scan.segmentation_id}
-              onClick={() => handleScanClick(scan)}
-              style={{ cursor: 'pointer', marginBottom: '10px' }}
-            >
-              <p>
-                <strong>Patient:</strong> {scan.patient_email}
-              </p>
-              <p>{scan.created_at}</p>
-              <p>
-                Threshold: [{scan.lower_threshold}, {scan.upper_threshold}]
-              </p>
+            <li key={scan.segmentation_id}>
+              {/* Use <details> to allow expansion on click */}
+              <details onClick={() => handleScanClick(scan)}>
+                <summary>
+                  Patient: {scan.patient_email} – {scan.created_at}
+                </summary>
+                <p>Threshold Range: [{scan.lower_threshold}, {scan.upper_threshold}]</p>
+              </details>
             </li>
           ))}
         </ul>
 
         <h3>Upload New Scan</h3>
-        <form onSubmit={handleScanUpload}>
-          <div>
-            <label htmlFor="folder">Folder:</label>
+        <form onSubmit={handleScanUpload} className="upload-form">
+          <div className="form-group custom-file-input">
+            <label htmlFor="folder">Select Folder</label>
             <input type="file" id="folder" name="folder" required />
           </div>
-          <div>
-            <label htmlFor="patientEmail">Patient Email:</label>
+          <div className="form-group">
+            <label htmlFor="patientEmail">Patient Email</label>
             <input type="email" id="patientEmail" name="patientEmail" required />
           </div>
           <button type="submit">Upload</button>
@@ -127,7 +113,7 @@ const PhysiciansHome: FC = () => {
 
       {/* RIGHT PANEL */}
       <div className="right-panel">
-        <h2>Selected Scan Viewer (Cornerstone3D Stack)</h2>
+        <h2>CT SCAN VIEWER</h2>
         {imageIds.length > 0 ? (
           <Cornerstone3DStackViewer imageIds={imageIds} />
         ) : (
