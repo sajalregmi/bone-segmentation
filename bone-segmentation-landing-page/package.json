@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@cornerstonejs/core": "^2.19.13",
+    "@cornerstonejs/dicom-image-loader": "^2.19.13",
+    "@cornerstonejs/tools": "^2.19.13",
+    "@craco/craco": "^7.1.0",
+    "@icr/polyseg-wasm": "^0.4.0",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
@@ -11,6 +16,9 @@
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "cra-template-typescript": "1.2.0",
+    "craco": "^0.0.3",
+    "dicom-parser": "^1.8.21",
+    "path-browserify": "^1.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.2.0",
@@ -19,10 +27,9 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "start": "craco start",
+    "build": "craco build",
+    "test": "craco test"
   },
   "eslintConfig": {
     "extends": [

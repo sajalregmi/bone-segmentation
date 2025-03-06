@@ -49,18 +49,9 @@ const NavBar = () => {
         return res.json();
       })
       .then((data) => {
-        // data could contain a token, role, etc.
-        // for demonstration, assume data.role is returned
-        alert(`Logged in as physician: ${physicianEmail}`);
+        localStorage.setItem('access_token', data.access_token);
         setShowPhysicianModal(false);
-
-        // Suppose the role is returned as data.role; if it's "physician", go to /physicians/home
-        if (data.role === 'physician') {
           navigate('/physicians/home');
-        } else if (data.role === 'patient') {
-          // navigate('/patients/home');
-          // or handle error for mismatched role
-        }
       })
       .catch((err) => {
         console.error(err);
@@ -98,15 +89,8 @@ const NavBar = () => {
       .then((data) => {
         alert(`Logged in as patient: ${patientEmail}`);
         setShowPatientModal(false);
+         // navigate('/physicians/home');
 
-        // if role is "patient", go to /patients/home
-        if (data.role === 'patient') {
-          // navigate('/patients/home');
-          // For demonstration, just show an alert:
-          alert('Navigating to patient home page...');
-        } else if (data.role === 'physician') {
-          // navigate('/physicians/home');
-        }
       })
       .catch((err) => {
         console.error(err);
@@ -142,9 +126,8 @@ const NavBar = () => {
         }
         return res.json();
       })
-      .then((data) => {
-        alert('Signup successful!');
-        // Optionally auto-login or do something with data
+      .then((data: any) => {
+        alert('Signup successful, please login to continue');
         setShowSignupModal(false);
       })
       .catch((err) => {

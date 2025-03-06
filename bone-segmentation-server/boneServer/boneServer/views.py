@@ -9,10 +9,11 @@ import jwt as pyjwt
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from django.http import JsonResponse, FileResponse, Http404
+from django.http import JsonResponse, FileResponse, Http404, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import UserProfile, SegmentationRecord
 from django.utils import timezone
+from io import BytesIO
 
 
 def convert_to_hu(dicom_data):
@@ -321,3 +322,63 @@ def serve_dicom_file(request, seg_id, filename):
     # Return the raw DICOM file
     # Content type isn't strictly required but can be "application/dicom" or "application/octet-stream"
     return FileResponse(open(dicom_path, 'rb'), content_type='application/dicom')
+
+
+@csrf_exempt
+def wado_rs_frame(request, seg_id, filename, frame_number):
+    """
+    Minimal WADO-RS-ish endpoint:
+    GET /dicoms/<seg_id>/<filename>/frames/<frame_number>
+    Returns a single-frame DICOM that Cornerstone can render.
+    """
+    if request.method != "GET":
+        return JsonResponse({"error": "GET method required"}, status=405)
+
+    # Decode JWT
+    current_user, error_msg = decode_jwt_token(request)
+    if current_user is None:
+        return JsonResponse({"error": error_msg}, status=401)
+
+    try:
+        if current_user.userprofile.role.lower() != "physician":
+            return JsonResponse({"error": "Only physicians can view scans."}, status=403)
+    except UserProfile.DoesNotExist:
+        return JsonResponse({"error": "User profile not found"}, status=404)
+
+    try:
+        seg = SegmentationRecord.objects.get(id=seg_id, physician=current_user)
+    except SegmentationRecord.DoesNotExist:
+        return JsonResponse({"error": "Segmentation not found"}, status=404)
+
+    dicom_path = os.path.join(seg.output_folder_path, filename)
+    if not os.path.exists(dicom_path):
+        raise Http404("DICOM file not found: " + filename)
+
+    ds = pydicom.dcmread(dicom_path)
+
+    # If single-frame or missing NumberOfFrames, just return the full file as is
+    # (Cornerstone might call /frames/1 but we’ll give the entire single-frame DICOM)
+    total_frames = ds.get("NumberOfFrames", 1)
+    if total_frames == 1:
+        # Return the entire file (unchanged)
+        return FileResponse(open(dicom_path, 'rb'), content_type="application/dicom")
+
+    # Otherwise, handle multi-frame data, extract the requested frame
+    if frame_number < 1 or frame_number > total_frames:
+        raise Http404(f"Requested frame {frame_number} out of range (1..{total_frames})")
+
+    pixel_array = ds.pixel_array  # This loads all frames. If large, watch out for memory usage
+    selected_frame_data = pixel_array[frame_number - 1]  # zero-based index
+
+    single_frame_ds = ds.copy()  # Make a copy so we don't mutate the original
+    single_frame_ds.NumberOfFrames = 1
+    single_frame_ds.Rows = selected_frame_data.shape[0]
+    single_frame_ds.Columns = selected_frame_data.shape[1] if len(selected_frame_data.shape) > 1 else 1
+
+    single_frame_ds.PixelData = selected_frame_data.tobytes()
+    buffer = BytesIO()
+    single_frame_ds.save_as(buffer, write_like_original=False)
+    buffer.seek(0)
+
+    # Return as "application/dicom" so Cornerstone can parse it
+    return HttpResponse(buffer, content_type="application/dicom")

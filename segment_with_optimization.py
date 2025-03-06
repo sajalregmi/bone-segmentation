@@ -38,7 +38,6 @@ def segment_bone_hu(image_hu, lower_hu=300, upper_hu=2000):
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 1))
     cleaned_mask = cv2.morphologyEx(binary_mask, cv2.MORPH_CLOSE, kernel)
     segmented_bone = cv2.bitwise_and(image_hu, image_hu, mask=cleaned_mask)
-    
     return segmented_bone, cleaned_mask
 
 def load_dicom(filepath):
