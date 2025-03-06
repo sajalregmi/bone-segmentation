@@ -1,0 +1,161 @@
+.physician-home-container {
+  display: flex;
+  height: 100vh;
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* LEFT PANEL */
+.left-panel {
+  width: 25%;
+  background-color: #f7f9fb; /* Light neutral background */
+  padding: 1rem;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  overflow-y: auto; /* Scroll if content is long */
+}
+
+.left-panel h2 {
+  margin-bottom: 1rem;
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.left-panel ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Each scan item container */
+.left-panel li {
+  background-color: #ffffff;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  padding: 0.5rem;
+  transition: background-color 0.2s ease-in-out;
+}
+
+/* Hover effect on each scan item */
+.left-panel li:hover {
+  background-color: #e6e9ec; /* Slightly darker neutral for hover */
+  cursor: pointer;
+}
+
+/* Use details/summary to show/hide info on each scan */
+.left-panel details {
+  margin: 0; /* Remove default margin for details */
+}
+
+.left-panel summary {
+  font-weight: 600;
+  outline: none;
+  list-style: none; /* Hide default marker in some browsers */
+  color: #444;
+}
+
+.left-panel p {
+  margin: 0.2rem 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+/* UPLOAD FORM STYLES */
+.left-panel h3 {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  font-size: 1rem;
+  color: #333;
+}
+
+.upload-form {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Spacing for each form field */
+.form-group {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Label styling */
+.form-group label {
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
+  color: #333;
+}
+
+/* Input styling */
+.form-group input[type="email"],
+.form-group input[type="text"] {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.4rem;
+  font-size: 0.9rem;
+}
+
+/* FILE PICKER – hide the real input, style a label as the button */
+.custom-file-input {
+  position: relative;
+  display: inline-block;
+}
+
+.custom-file-input input[type="file"] {
+  width: 0.1px;
+  height: 0.1px;
+  opacity: 0;
+  overflow: hidden;
+  position: absolute;
+  z-index: -1;
+}
+
+.custom-file-input label {
+  display: inline-block;
+  background-color: #3498db; /* Accent color */
+  color: #ffffff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.custom-file-input label:hover {
+  background-color: #2e86c1; /* Darker accent on hover */
+}
+
+/* Upload button */
+.upload-form button[type="submit"] {
+  background-color: #3498db; /* Same accent color */
+  border: none;
+  color: #ffffff;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.upload-form button[type="submit"]:hover {
+  background-color: #2e86c1; /* Darker accent on hover */
+}
+
+/* RIGHT PANEL */
+.right-panel {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  background-color: #ffffff;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.right-panel h2 {
+  margin-bottom: 1rem;
+  color: #333;
+}

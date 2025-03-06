@@ -1,0 +1,11 @@
+asgiref==3.8.1
+Django==5.1.6
+numpy==2.2.2
+pandas==2.2.3
+pydicom==3.0.1
+python-dateutil==2.9.0.post0
+pytz==2025.1
+six==1.17.0
+sqlparse==0.5.3
+trimesh==4.6.1
+tzdata==2025.1
