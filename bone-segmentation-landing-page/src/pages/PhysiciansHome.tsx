@@ -11,6 +11,7 @@ interface Scan {
   created_at: string;
   upper_threshold: number;
   lower_threshold: number;
+  three_d_model_path: string | null;
 }
 
 const PhysiciansHome: FC = () => {
@@ -189,26 +190,73 @@ const PhysiciansHome: FC = () => {
       console.error('Error fetching DICOM file list:', error);
     }
   };
+
+  const handleReconstruct3D = async (scan: Scan) => {
+    try {
+      const url = `http://127.0.0.1:8000/reconstruct-3d/${scan.segmentation_id}/`;
+      const body = {
+        iso_level: 0.5, // or prompt user, or let them set in UI
+      };
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        console.error('3D reconstruction failed');
+        alert('3D reconstruction failed.');
+        return;
+      }
+      const data = await res.json();
+      alert('3D reconstruction completed! STL: ' + data.three_d_model_path);
+      const updatedScansRes = await fetch('http://127.0.0.1:8000/get-scans/', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (updatedScansRes.ok) {
+        const updatedData = await updatedScansRes.json();
+        setScans(updatedData.segmentations);
+      }
+
+    } catch (error) {
+      console.error('Error reconstructing 3D:', error);
+    }
+  };
+
   return (
     <div className="physician-home-container">
       {/* LEFT PANEL */}
       <div className="left-panel">
         <h2>Latest Scans</h2>
         <ul>
-          {scans.map((scan) => (
-            <li key={scan.segmentation_id}>
-              <details onClick={() => handleScanClick(scan)}>
-                <summary>
-                  Patient: {scan.patient_email} – {scan.created_at}
-                </summary>
-                <p>
-                  Threshold Range: [{scan.lower_threshold}, {scan.upper_threshold}]
-                </p>
-              </details>
-              {/* Button to re-segment this scan */}
+        {scans.map((scan) => (
+            <li key={scan.segmentation_id} style={{ marginBottom: '1rem' }}>
+              <div onClick={() => {/* show the scan images if you want */}}>
+                <strong>Patient:</strong> {scan.patient_email}<br />
+                <strong>Threshold Range:</strong> [{scan.lower_threshold}, {scan.upper_threshold}]<br />
+                <strong>Created At:</strong> {scan.created_at}<br />
+              </div>
+
               <button onClick={() => handleResegmentClick(scan)}>
-                Re-segment
-              </button>
+                  Resegment
+                </button>
+
+              {scan.three_d_model_path && (
+                <button onClick={() => alert('Open new route / 3D viewer...')}>
+                  View 3D
+                </button>
+              ) }
+                <button onClick={() => handleReconstruct3D(scan)}>
+                  Reconstruct 3D
+                </button>
+
             </li>
           ))}
         </ul>
@@ -218,13 +266,24 @@ const PhysiciansHome: FC = () => {
           <div className="form-group">
             <label htmlFor="folder">Folder Path</label>
             <input
-              type="text"
-              id="folderPath"
-              name="folderPath"
-              value={folderPath}
-              onChange={(e) => setFolderPath(e.target.value)}
-              required
-            />
+                type="file"
+                {...{ webkitdirectory: "true" }}
+                multiple
+                onChange={(e) => {
+                  const files = e.target.files;
+                  if (files && files.length > 0) {
+                    const relPath = files[0].webkitRelativePath;
+                    const folderName = relPath.split('/')[0]; 
+                    console.log('Selected folder name:', folderName);
+                    console.log('relative path:', relPath);
+                    const devRootPath = '/Users/sajalregmi/bone-segmentation/DICOM_IMAGES/';
+                    const fullFolderPath = `${devRootPath}${folderName}`;
+                    console.log('Reconstructed folder path:', fullFolderPath);
+                    setFolderPath(fullFolderPath);
+                  }
+                }}
+              />
+
           </div>
           <div className="form-group">
             <label htmlFor="lowerThreshold">Lower Threshold</label>
