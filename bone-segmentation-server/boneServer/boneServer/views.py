@@ -325,6 +325,32 @@ def serve_dicom_file(request, seg_id, filename):
     # Content type isn't strictly required but can be "application/dicom" or "application/octet-stream"
     return FileResponse(open(dicom_path, 'rb'), content_type='application/dicom')
 
+@csrf_exempt
+def get_scan(request, segmentation_id):
+    if request.method != 'GET':
+        return JsonResponse({"error": "GET required"}, status=405)
+
+    current_user, error_msg = decode_jwt_token(request)
+    if current_user is None:
+        return JsonResponse({"error": error_msg}, status=401)
+
+    # Optional: check that the current user is the one who created the scan
+    try:
+        scan = SegmentationRecord.objects.get(id=segmentation_id)
+    except SegmentationRecord.DoesNotExist:
+        return JsonResponse({"error": "Scan not found"}, status=404)
+
+    scan_data = {
+        "segmentation_id": scan.id,
+        "patient_email": scan.patient_email,
+        "output_folder_path": scan.output_folder_path,
+        "created_at": scan.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "upper_threshold": scan.upper_threshold,
+        "lower_threshold": scan.lower_threshold,
+        "three_d_model_path": scan.three_d_model_path,
+    }
+
+    return JsonResponse(scan_data, status=200)
 
 @csrf_exempt
 def wado_rs_frame(request, seg_id, filename, frame_number):
