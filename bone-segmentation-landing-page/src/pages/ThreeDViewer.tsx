@@ -3,11 +3,16 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 
 const ThreeDViewer = () => {
   // Grab the filePath from URL params, e.g., /view-3d/my_bone_model_stl.stl
-  const { filePath } = useParams();
+
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  const filePath = params.get('file');
+
+
 
   // We'll render the scene into this DOM node
   const mountRef = useRef<HTMLDivElement | null>(null);

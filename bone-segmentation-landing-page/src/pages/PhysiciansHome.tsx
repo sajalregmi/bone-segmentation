@@ -249,7 +249,10 @@ const PhysiciansHome: FC = () => {
                 </button>
 
               {scan.three_d_model_path && (
-                <button onClick={() => alert('Open new route / 3D viewer...')}>
+                <button onClick={() =>{
+                  const modelPath = `http://127.0.1:8000${scan.three_d_model_path}`;
+                  navigate(`/view-3d?file=${encodeURIComponent(modelPath)}`);
+                }}>
                   View 3D
                 </button>
               ) }
