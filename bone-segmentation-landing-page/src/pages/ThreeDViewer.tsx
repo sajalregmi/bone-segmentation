@@ -1,49 +1,89 @@
-// src/pages/ThreeDViewer.tsx
-
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'; 
 import { useLocation, useParams } from 'react-router-dom';
 
-const ThreeDViewer = () => {
-  // Grab the filePath from URL params, e.g., /view-3d/my_bone_model_stl.stl
+// Example shape of the 'scan' details your API returns
+interface ScanDetails {
+  segmentation_id: number;
+  patient_email: string;
+  lower_threshold: number;
+  upper_threshold: number;
+  created_at: string;
+  // ...any other fields you want to display
+}
 
+const ThreeDViewer: React.FC = () => {
+  // 1) Grab query params for the STL file
   const { search } = useLocation();
-  const params = new URLSearchParams(search);
-  const filePath = params.get('file');
+  const queryParams = new URLSearchParams(search);
+  const filePath = queryParams.get('file');  // e.g. "http://127.0.0.1:8000/media/stl_models/..."
+  
+  // 2) Grab route param for segmentation ID
+  const { segmentationId } = useParams(); 
+  // or if your route is `:segId`, destructure that instead
 
-
+  // 3) Local state for scan details and loading states
+  const [scan, setScan] = useState<ScanDetails | null>(null);
+  const [isLoadingModel, setIsLoadingModel] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // We'll render the scene into this DOM node
   const mountRef = useRef<HTMLDivElement | null>(null);
 
+  // ========== Fetch Scan Details (if we have a seg ID) ==========
+  useEffect(() => {
+    if (!segmentationId) return;
+    
+    const fetchScanDetails = async () => {
+      try {
+        // Example: GET /get-scan/<segmentationId>/
+        const res = await fetch(`http://127.0.0.1:8000/get-scan/${segmentationId}/`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          }
+        });
+        if (!res.ok) {
+          throw new Error(`Could not fetch scan details for ID ${segmentationId}`);
+        }
+        const data = await res.json();
+        setScan(data);
+      } catch (err: any) {
+        console.error('Error fetching scan details:', err);
+      }
+    };
+    
+    fetchScanDetails();
+  }, [segmentationId]);
+
+  // ========== 3D Scene Setup ==========
   useEffect(() => {
     if (!filePath) {
       return;
     }
 
-    // 1. Setup Scene, Camera, Renderer
+    // 1) Scene, camera, renderer
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xffffff);
-
-    // You can tweak the aspect ratio/fov as needed
+    scene.background = new THREE.Color(0x000000); // Classy black
+    
     const camera = new THREE.PerspectiveCamera(
       50, // FOV
-      window.innerWidth / window.innerHeight, // aspect ratio
-      0.1, // near
-      1000 // far
+      window.innerWidth / window.innerHeight, 
+      0.1, 
+      1000
     );
-    camera.position.set(0, 0, 50);
+    camera.position.set(0, 0, 100);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
 
-    // 2. Append renderer to our ref's DOM node
+    // 2) Append to DOM
     if (mountRef.current) {
       mountRef.current.appendChild(renderer.domElement);
     }
 
-    // 3. Add some basic lighting
+    // 3) Lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
 
@@ -51,42 +91,65 @@ const ThreeDViewer = () => {
     directionalLight.position.set(10, 10, 10);
     scene.add(directionalLight);
 
-    // 4. Load the STL model
+    // 4) Add OrbitControls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    // Adjust some settings if desired
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    // 5) Load the STL
     const loader = new STLLoader();
-    // If you’re loading a local file (on a Mac in Downloads folder, e.g.),
-    // you’ll need to serve it or use a valid URL. 
-    // For demonstration, let's assume an absolute or server URL:
     const modelURL = decodeURIComponent(filePath);
+
+    let modelMesh: THREE.Mesh | null = null;
 
     loader.load(
       modelURL,
-      (geometry: any) => {
-        // Build a mesh from the geometry
+      (geometry) => {
+        // Build a mesh from geometry
         const material = new THREE.MeshPhongMaterial({ color: 0xa0a0a0 });
-        const mesh = new THREE.Mesh(geometry, material);
+        modelMesh = new THREE.Mesh(geometry, material);
 
-        // Center the geometry
+        // Center the geometry in bounding box
         geometry.center();
 
-        // Scale the geometry a bit (optional)
-        mesh.scale.set(0.5, 0.5, 0.5);
+        // Scale it a bit
+        modelMesh.scale.set(0.5, 0.5, 0.5);
 
-        scene.add(mesh);
+        // Optionally do some minimal rotation to see something
+        modelMesh.rotation.x = -Math.PI / 2;
+
+        scene.add(modelMesh);
+
+        setIsLoadingModel(false);
       },
+      // onProgress
       undefined,
+      // onError
       (error: any) => {
         console.error('Error loading STL file:', error);
+        setLoadError('Failed to load 3D model.');
       }
     );
 
-    // 5. Animate (render) the scene
+    // 6) Animate + optional rotation 
+    const clock = new THREE.Clock();
+
     const animate = () => {
       requestAnimationFrame(animate);
+
+      // Let's do a slow rotation if the model is loaded
+      if (modelMesh) {
+        // You can also do a time-based rotation
+        // e.g., modelMesh.rotation.y += 0.01;
+      }
+
+      controls.update(); // for damping
       renderer.render(scene, camera);
     };
     animate();
 
-    // 6. Handle resizing
+    // 7) Handle resizing
     const handleResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -104,11 +167,72 @@ const ThreeDViewer = () => {
     };
   }, [filePath]);
 
+  // ========== Render JSX ==========
   if (!filePath) {
-    return <div>No file path provided.</div>;
+    return <div style={{ color: 'white' }}>No file path provided.</div>;
   }
 
-  return <div ref={mountRef} style={{ width: '100vw', height: '100vh' }} />;
+  return (
+    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+      {/* Scene mount */}
+      <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
+
+      {/* 1) Loading Spinner or Error */}
+      {isLoadingModel && !loadError && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            color: '#fff',
+            padding: '1rem',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            borderRadius: '8px'
+          }}
+        >
+          Loading 3D model...
+        </div>
+      )}
+      {loadError && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            color: 'red',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            padding: '1rem',
+            borderRadius: '8px'
+          }}
+        >
+          {loadError}
+        </div>
+      )}
+
+      {/* 2) Scan Details (if we have them) */}
+      {scan && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '1rem',
+            left: '1rem',
+            color: '#fff',
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            padding: '0.5rem 1rem',
+            borderRadius: '4px'
+          }}
+        >
+          <h4>Scan Details</h4>
+          <p>Segmentation ID: {scan.segmentation_id}</p>
+          <p>Patient Email: {scan.patient_email}</p>
+          <p>Threshold Range: [{scan.lower_threshold}, {scan.upper_threshold}]</p>
+          <p>Created: {scan.created_at}</p>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default ThreeDViewer;
