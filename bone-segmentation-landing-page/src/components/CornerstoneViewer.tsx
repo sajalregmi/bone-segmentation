@@ -22,11 +22,7 @@ import './css/cornerstone.css';
 function Cornerstone3DStackViewer({ imageIds }: { imageIds: string[] }) {
   const elementRef = useRef<HTMLDivElement | null>(null);
   const renderingEngineRef = useRef<RenderingEngine | null>(null);
-
-  // We'll store the stack viewport in this ref so we can call setImageIdIndex.
   const viewportRef = useRef<Types.IStackViewport | null>(null);
-
-  // React state: which slice index are we currently displaying?
   const [currentSlice, setCurrentSlice] = useState(0);
 
   const toolGroupId = "MY_TOOLGROUP";
@@ -36,11 +32,8 @@ function Cornerstone3DStackViewer({ imageIds }: { imageIds: string[] }) {
     if (!elementRef.current || imageIds.length === 0) return;
 
     const initCornerstone = async () => {
-      // 1) Initialize Cornerstone core and tools
       await csRenderInit();
       await csToolsInit();
-
-      // 2) Initialize DICOM Loader (with token if needed)
       await dicomImageLoaderInit({
         beforeSend: (xhr) => {
           const token = localStorage.getItem("access_token");
