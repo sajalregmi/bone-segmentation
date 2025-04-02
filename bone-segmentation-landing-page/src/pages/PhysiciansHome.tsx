@@ -195,7 +195,7 @@ const PhysiciansHome: FC = () => {
     try {
       const url = `http://127.0.0.1:8000/reconstruct-3d/${scan.segmentation_id}/`;
       const body = {
-        iso_level: 0.5, // or prompt user, or let them set in UI
+        iso_level: 0.5,
       };
 
       const res = await fetch(url, {
@@ -238,7 +238,9 @@ const PhysiciansHome: FC = () => {
         <ul>
         {scans.map((scan) => (
             <li key={scan.segmentation_id} style={{ marginBottom: '1rem' }}>
-              <div onClick={() => {/* show the scan images if you want */}}>
+              <div onClick={() => {
+                handleScanClick(scan);
+              }}>
                 <strong>Patient:</strong> {scan.patient_email}<br />
                 <strong>Threshold Range:</strong> [{scan.lower_threshold}, {scan.upper_threshold}]<br />
                 <strong>Created At:</strong> {scan.created_at}<br />
@@ -251,7 +253,9 @@ const PhysiciansHome: FC = () => {
               {scan.three_d_model_path && (
                 <button onClick={() =>{
                   const modelPath = `http://127.0.1:8000${scan.three_d_model_path}`;
-                  navigate(`/view-3d/${scan.segmentation_id}?file=${encodeURIComponent(modelPath)}`);
+const url = `/view-3d/${scan.segmentation_id}?file=${encodeURIComponent(modelPath)}`;
+window.open(url, '_blank');
+
                 }}>
                   View 3D
                 </button>

@@ -17,6 +17,7 @@ const ThreeDViewer: React.FC = () => {
   const queryParams = new URLSearchParams(search);
   const filePath = queryParams.get('file');  // e.g. "http://127.0.0.1:8000/media/stl_models/..."
     const { segmentationId } = useParams(); 
+    console.log('Segmentation ID:', segmentationId);
   const [scan, setScan] = useState<ScanDetails | null>(null);
   const [isLoadingModel, setIsLoadingModel] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -26,15 +27,20 @@ const ThreeDViewer: React.FC = () => {
     
     const fetchScanDetails = async () => {
       try {
+        console.log('Fetching scan details for ID:', segmentationId);
         const res = await fetch(`http://127.0.0.1:8000/get-scan/${segmentationId}/`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('access_token')}`
           }
         });
         if (!res.ok) {
+          console.error('Failed to fetch scan details:', res.statusText);
           throw new Error(`Could not fetch scan details for ID ${segmentationId}`);
         }
+        console.log('Response status:', res.status);
         const data = await res.json();
+        
+        console.log('Scan details:', data);
         setScan(data);
       } catch (err: any) {
         console.error('Error fetching scan details:', err);
@@ -58,7 +64,7 @@ const ThreeDViewer: React.FC = () => {
       0.1, 
       1000
     );
-    camera.position.set(0, 0, 100);
+    camera.position.set(0, 0, 200);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -102,17 +108,11 @@ const ThreeDViewer: React.FC = () => {
     const clock = new THREE.Clock();
     const animate = () => {
       requestAnimationFrame(animate);
-
-      // Let's do a slow rotation if the model is loaded
-      if (modelMesh) {
-        modelMesh.rotation.y += 0.01;
-      }
-
       controls.update(); 
       renderer.render(scene, camera);
     };
-    animate();
 
+    animate();
     const handleResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -170,25 +170,30 @@ const ThreeDViewer: React.FC = () => {
         </div>
       )}
 
-      {scan && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '1rem',
-            left: '1rem',
-            color: '#fff',
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            padding: '0.5rem 1rem',
-            borderRadius: '4px'
-          }}
-        >
-          <h4>Scan Details</h4>
-          <p>Segmentation ID: {scan.segmentation_id}</p>
-          <p>Patient Email: {scan.patient_email}</p>
-          <p>Threshold Range: [{scan.lower_threshold}, {scan.upper_threshold}]</p>
-          <p>Created: {scan.created_at}</p>
-        </div>
-      )}
+{scan && (
+  <div
+    style={{
+      position: 'absolute',
+      top: '1rem',
+      left: '1rem',
+      backgroundColor: '#ffffff',
+      color: '#000000',
+      padding: '1rem',
+      borderRadius: '8px',
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+      zIndex: 10,
+      maxWidth: '300px',
+      fontSize: '0.9rem',
+    }}
+  >
+    <h4 style={{ margin: '0 0 0.5rem 0' }}>Scan Details</h4>
+    <p style={{ margin: 0 }}><strong>ID:</strong> {scan.segmentation_id}</p>
+    <p style={{ margin: 0 }}><strong>Patient:</strong> {scan.patient_email}</p>
+    <p style={{ margin: 0 }}><strong>Thresholds:</strong> [{scan.lower_threshold}, {scan.upper_threshold}]</p>
+    <p style={{ margin: 0 }}><strong>Created:</strong> {scan.created_at}</p>
+  </div>
+)}
+
     </div>
   );
 };

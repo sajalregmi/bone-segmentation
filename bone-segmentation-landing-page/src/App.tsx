@@ -22,7 +22,7 @@ function App() {
           } />
           <Route path="/physicians/home" element={<PhysiciansHome />} />
           {/* <Route path="/patients/home" element={<PatientsHome />} /> */}
-          <Route path="/view-3d/:filePath" element={<ThreeDViewer />} />
+          <Route path="/view-3d/:segmentationId" element={<ThreeDViewer />} />
         </Routes>
 
         <Footer />
