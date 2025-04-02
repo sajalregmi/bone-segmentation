@@ -251,7 +251,7 @@ const PhysiciansHome: FC = () => {
               {scan.three_d_model_path && (
                 <button onClick={() =>{
                   const modelPath = `http://127.0.1:8000${scan.three_d_model_path}`;
-                  navigate(`/view-3d?file=${encodeURIComponent(modelPath)}`);
+                  navigate(`/view-3d/${scan.segmentation_id}?file=${encodeURIComponent(modelPath)}`);
                 }}>
                   View 3D
                 </button>
