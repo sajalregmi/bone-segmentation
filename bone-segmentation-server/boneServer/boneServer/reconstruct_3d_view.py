@@ -13,8 +13,6 @@ from django.contrib.auth.models import User
 
 
 from .models import SegmentationRecord
-
-# Dependencies for reconstruction
 from skimage.measure import marching_cubes
 
 try:
@@ -32,8 +30,6 @@ def decode_jwt_token(request):
     auth_header = request.META.get('HTTP_AUTHORIZATION', None)
     if not auth_header:
         return None, "Missing Authorization header"
-
-    # Expecting header like: "Bearer <token>"
     parts = auth_header.split()
     if len(parts) != 2 or parts[0].lower() != 'bearer':
         return None, "Invalid Authorization header format"
@@ -70,14 +66,12 @@ def reconstruct_3d_view(request, segmentation_id):
     if not current_user.userprofile.role.lower() == "physician":
         return JsonResponse({"error": "Only physicians can reconstruct 3D."}, status=403)
 
-    # Parse JSON body
     try:
         data = json.loads(request.body)
     except (json.JSONDecodeError, TypeError):
         data = {}
-    iso_level = float(data.get("iso_level", 0.5))  # default to 0.5
+    iso_level = float(data.get("iso_level", 0.5))
 
-    # Get the segmentation record
     try:
         seg_record = SegmentationRecord.objects.get(id=segmentation_id)
     except SegmentationRecord.DoesNotExist:
@@ -87,17 +81,14 @@ def reconstruct_3d_view(request, segmentation_id):
     if not os.path.isdir(segmented_folder):
         return JsonResponse({"error": f"Segmented folder not found: {segmented_folder}"}, status=400)
 
-    # Build a path to save the STL
     timestamp_str = timezone.now().strftime("%Y%m%d_%H%M%S")
     stl_filename = f"3D_model_{seg_record.id}_{timestamp_str}.stl"
     stl_path = os.path.join(segmented_folder, stl_filename)
 
-    # Reconstruct the 3D model
     success, msg = do_3d_reconstruction(segmented_folder, iso_level, stl_path)
     if not success:
         return JsonResponse({"error": msg}, status=500)
 
-    # Update the record
     seg_record.three_d_model_path = stl_path
     seg_record.save()
 
@@ -112,25 +103,19 @@ def do_3d_reconstruction(folder_path, iso_level, save_stl):
     Calls your existing reconstruction logic.
     Returns (True, "success_message") or (False, "error_message")
     """
-    # Basic checks
     if not HAS_TRIMESH:
         return (False, "trimesh not installed. Please install it to save STL.")
     if not os.path.exists(folder_path):
         return (False, f"Folder does not exist: {folder_path}")
 
     try:
-        # Gather DICOM files
         dcm_files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.lower().endswith(".dcm")]
         if not dcm_files:
             return (False, f"No DICOM files found in {folder_path}")
-
-        # Sort by InstanceNumber
         def get_instance_number(fp):
             ds = pydicom.dcmread(fp, stop_before_pixels=True)
             return int(ds.InstanceNumber) if 'InstanceNumber' in ds else 0
         dcm_files.sort(key=get_instance_number)
-
-        # Load slices into a volume
         datasets = [pydicom.dcmread(fp) for fp in dcm_files]
         first_ds = datasets[0]
         rows, cols = first_ds.pixel_array.shape
@@ -139,24 +124,18 @@ def do_3d_reconstruction(folder_path, iso_level, save_stl):
         volume_3d = np.zeros((num_slices, rows, cols), dtype=np.float32)
         for i, ds in enumerate(datasets):
             arr = ds.pixel_array.astype(np.float32)
-            # Binarize (assuming segmented bone is > 0)
             volume_3d[i] = (arr > 0).astype(np.float32)
-
-        # Spacing
         try:
             dz = float(first_ds.SliceThickness)
         except:
             dz = float(first_ds.SpacingBetweenSlices)
         dy, dx = [float(val) for val in first_ds.PixelSpacing]
         spacing = (dz, dy, dx)
-
-        # Marching cubes
         verts, faces, norms, vals = marching_cubes(volume_3d, 
                                                    level=iso_level, 
                                                    spacing=spacing,
                                                    step_size=1)
         mesh = trimesh.Trimesh(vertices=verts, faces=faces, vertex_normals=norms)
-        # Optional smoothing
         filter_taubin(mesh, lamb=0.3, nu=-0.32, iterations=3)
         mesh.export(save_stl)
 
