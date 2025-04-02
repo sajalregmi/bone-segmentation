@@ -14,6 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import UserProfile, SegmentationRecord
 from django.utils import timezone
 from io import BytesIO
+import shutil
 
 
 def convert_to_hu(dicom_data):
@@ -382,3 +383,68 @@ def wado_rs_frame(request, seg_id, filename, frame_number):
 
     # Return as "application/dicom" so Cornerstone can parse it
     return HttpResponse(buffer, content_type="application/dicom")
+
+@csrf_exempt
+def resegment_images(request, segmentation_id):
+    """
+    Re-segment an existing scan (identified by segmentation_id) with new thresholds.
+    - Will delete the old segmentation record and output folder, 
+      then re-run segmentation and create a NEW record.
+    - Expects JSON body with "lower_threshold", "upper_threshold".
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "POST method required"}, status=405)
+    current_user, error_msg = decode_jwt_token(request)
+    if current_user is None:
+        return JsonResponse({"error": error_msg}, status=401)
+    if current_user.userprofile.role.lower() != "physician":
+        return JsonResponse({"error": "Only physicians can perform segmentation."}, status=403)
+    try:
+        data = json.loads(request.body)
+        lower_threshold = int(data["lower_threshold"])
+        upper_threshold = int(data["upper_threshold"])
+    except (KeyError, json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Missing or invalid thresholds"}, status=400)
+    try:
+        old_record = SegmentationRecord.objects.get(id=segmentation_id)
+    except SegmentationRecord.DoesNotExist:
+        return JsonResponse({"error": "Segmentation record not found"}, status=404)
+
+    old_output_folder = old_record.output_folder_path
+    if os.path.exists(old_output_folder):
+        shutil.rmtree(old_output_folder) 
+
+    folder_path = old_record.folder_path
+    patient_email = old_record.patient_email
+
+    timestamp_str = timezone.now().strftime("%Y%m%d_%H%M%S")
+    new_output_folder = f"{folder_path}_segmented_{timestamp_str}"
+    os.makedirs(new_output_folder, exist_ok=True)
+
+    for filename in os.listdir(folder_path):
+        if filename.lower().endswith('.dcm'):
+            dicom_filepath = os.path.join(folder_path, filename)
+            ds = pydicom.dcmread(dicom_filepath)
+
+            image_hu = convert_to_hu(ds)
+            segmented_image = segment_bone_hu(image_hu, lower_hu=lower_threshold, upper_hu=upper_threshold)
+            ds.PixelData = segmented_image.astype(np.int16).tobytes()
+
+            output_path = os.path.join(new_output_folder, filename)
+            ds.save_as(output_path)
+
+    new_record = SegmentationRecord.objects.create(
+        physician=current_user,
+        patient_email=patient_email,
+        folder_path=folder_path,
+        output_folder_path=new_output_folder,
+        lower_threshold=lower_threshold,
+        upper_threshold=upper_threshold
+    )
+
+    old_record.delete()
+
+    return JsonResponse({
+        "message": "Re-segmentation completed successfully",
+        "new_segmentation_id": new_record.id
+    }, status=200)

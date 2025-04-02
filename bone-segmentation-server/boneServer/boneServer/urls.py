@@ -20,7 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 
-from .views import signup, login, segment_images, get_scans, get_dicom_files, serve_dicom_file, wado_rs_frame
+from .views import signup, login, segment_images, get_scans, get_dicom_files, serve_dicom_file, wado_rs_frame, resegment_images
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -30,6 +30,7 @@ urlpatterns = [
     path("get-scans/", get_scans, name="get_scans"),
     path('get-dicom-files/<int:seg_id>/', get_dicom_files, name='get_dicom_files'),
     path('dicoms/<int:seg_id>/<str:filename>/', serve_dicom_file, name='serve_dicom_file'),
+     path('resegment-images/<int:segmentation_id>/',resegment_images, name='resegment-images'),
 
      path(
         "dicoms/<int:seg_id>/<str:filename>/frames/<int:frame_number>/",
