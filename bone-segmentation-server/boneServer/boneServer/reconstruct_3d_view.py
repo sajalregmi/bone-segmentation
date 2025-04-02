@@ -30,6 +30,7 @@ def decode_jwt_token(request):
     auth_header = request.META.get('HTTP_AUTHORIZATION', None)
     if not auth_header:
         return None, "Missing Authorization header"
+
     parts = auth_header.split()
     if len(parts) != 2 or parts[0].lower() != 'bearer':
         return None, "Invalid Authorization header format"
@@ -49,13 +50,12 @@ def decode_jwt_token(request):
 def reconstruct_3d_view(request, segmentation_id):
     """
     POST /reconstruct-3d/<segmentation_id>/
-    Body: { "iso_level": 0.5 }  # optional, defaults to 0.5
+    Body: { "iso_level": 0.5 }  # optional
 
-    - Finds the segmentation record by ID
-    - Loads the segmented DICOMs from output_folder_path
-    - Runs marching cubes, saves STL to e.g. <output_folder_path>/3D_model_<timestamp>.stl
-    - Stores path in three_d_model_path
-    - Returns JSON with the model path
+    - Reconstructs a 3D STL model from segmented DICOMs
+    - Saves STL in MEDIA_ROOT/stl_models/
+    - Stores URL path in SegmentationRecord.three_d_model_path
+    - Returns JSON with the model's HTTP-accessible URL
     """
     if request.method != "POST":
         return JsonResponse({"error": "Only POST allowed"}, status=405)
@@ -83,19 +83,29 @@ def reconstruct_3d_view(request, segmentation_id):
 
     timestamp_str = timezone.now().strftime("%Y%m%d_%H%M%S")
     stl_filename = f"3D_model_{seg_record.id}_{timestamp_str}.stl"
-    stl_path = os.path.join(segmented_folder, stl_filename)
+    stl_dir = os.path.join(settings.MEDIA_ROOT, 'stl_models')
+    os.makedirs(stl_dir, exist_ok=True)
+    stl_path = os.path.join(stl_dir, stl_filename)
+
+    if seg_record.three_d_model_path:
+        old_stl = os.path.join(settings.MEDIA_ROOT, seg_record.three_d_model_path.replace(settings.MEDIA_URL, ""))
+        if os.path.exists(old_stl):
+            os.remove(old_stl)
+
 
     success, msg = do_3d_reconstruction(segmented_folder, iso_level, stl_path)
     if not success:
         return JsonResponse({"error": msg}, status=500)
 
-    seg_record.three_d_model_path = stl_path
+    stl_web_url = f"{settings.MEDIA_URL}stl_models/{stl_filename}"
+    seg_record.three_d_model_path = stl_web_url
     seg_record.save()
 
     return JsonResponse({
         "message": "3D reconstruction completed",
-        "three_d_model_path": stl_path,
+        "three_d_model_url": stl_web_url,
     }, status=200)
+
 
 
 def do_3d_reconstruction(folder_path, iso_level, save_stl):
