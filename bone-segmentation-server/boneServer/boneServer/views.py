@@ -242,6 +242,7 @@ def get_scans(request):
             "lower_threshold": seg.lower_threshold,
             "upper_threshold": seg.upper_threshold,
             "created_at": seg.created_at.isoformat(),
+            "three_d_model_path": seg.three_d_model_path,  # NEW
         })
 
     return JsonResponse({"segmentations": results}, status=200)

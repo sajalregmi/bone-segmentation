@@ -21,6 +21,7 @@ from django.conf.urls.static import static
 
 
 from .views import signup, login, segment_images, get_scans, get_dicom_files, serve_dicom_file, wado_rs_frame, resegment_images
+from .reconstruct_3d_view import reconstruct_3d_view
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -37,6 +38,9 @@ urlpatterns = [
         wado_rs_frame,
         name="wado_rs_frame"
     ),
+
+        path('reconstruct-3d/<int:segmentation_id>/', reconstruct_3d_view, name='reconstruct-3d'),
+
 ]
 
 if settings.DEBUG:
