@@ -41,7 +41,7 @@ def segment_bone_hu(image_hu, lower_hu=300, upper_hu=2000):
     binary_mask = (binary_mask * 255).astype(np.uint8)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 1))
     cleaned_mask = cv2.morphologyEx(binary_mask, cv2.MORPH_CLOSE, kernel)
-    segmented_bone = cv2.bitwise_and(image_hu, image_hu, mask=cleaned_mask)
+    segmented_bone = image_hu * (cleaned_mask > 0)
     return segmented_bone
 
 def decode_jwt_token(request):
@@ -177,11 +177,8 @@ def segment_images(request):
             # Convert to HU and segment
             image_hu = convert_to_hu(ds)
             segmented_image = segment_bone_hu(image_hu, lower_hu=lower_threshold, upper_hu=upper_threshold)
-
-            # Update the DICOM pixel data
-            # Make sure to handle DICOM metadata like BitsStored if needed
-            ds.PixelData = segmented_image.astype(np.int16).tobytes()
-
+            segmented_raw = hu_to_original_scale(segmented_image, ds)
+            ds.PixelData = segmented_raw.tobytes()
             # Save the new DICOM in the output folder
             output_path = os.path.join(output_folder, filename)
             ds.save_as(output_path)
@@ -202,6 +199,12 @@ def segment_images(request):
         "segmentation_id": seg_record.id
     }, status=200)
 
+
+def hu_to_original_scale(segmented_hu, dicom_data):
+    slope = dicom_data.RescaleSlope
+    intercept = dicom_data.RescaleIntercept
+    pixel_original  = (segmented_hu - intercept) / slope
+    return pixel_original.astype(np.uint16) 
 
 ############################
 # Fetch Recent Scans

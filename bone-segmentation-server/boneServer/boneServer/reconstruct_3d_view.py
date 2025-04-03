@@ -10,8 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 import jwt as pyjwt
 from django.conf import settings
 from django.contrib.auth.models import User
-
-
+from scipy.ndimage import binary_closing, gaussian_filter
 from .models import SegmentationRecord
 from skimage.measure import marching_cubes
 
@@ -134,7 +133,12 @@ def do_3d_reconstruction(folder_path, iso_level, save_stl):
         volume_3d = np.zeros((num_slices, rows, cols), dtype=np.float32)
         for i, ds in enumerate(datasets):
             arr = ds.pixel_array.astype(np.float32)
-            volume_3d[i] = (arr > 0).astype(np.float32)
+            print("ARRAY MIN:", arr.min(), "MAX:", arr.max())
+            arr_binary = (arr > 1).astype(np.float32)
+            volume_3d[i] = arr_binary
+        
+        volume_3d = binary_closing(volume_3d, structure=np.ones((3, 3, 3)))
+            
         try:
             dz = float(first_ds.SliceThickness)
         except:
@@ -146,7 +150,8 @@ def do_3d_reconstruction(folder_path, iso_level, save_stl):
                                                    spacing=spacing,
                                                    step_size=1)
         mesh = trimesh.Trimesh(vertices=verts, faces=faces, vertex_normals=norms)
-        filter_taubin(mesh, lamb=0.3, nu=-0.32, iterations=3)
+        # mesh = mesh.split(only_watertight=False)
+        filter_taubin(mesh, lamb=0.5, nu=-0.53, iterations=10)
         mesh.export(save_stl)
 
         return (True, f"STL saved to {save_stl}")
