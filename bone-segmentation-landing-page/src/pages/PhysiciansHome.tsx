@@ -14,6 +14,18 @@ interface Scan {
   three_d_model_path: string | null;
 }
 
+const styles = {
+  button: {
+    backgroundColor: '#3498db',
+    color: 'white',
+    padding: '10px 20px',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    margin: '5px',
+  }
+}
+
 const PhysiciansHome: FC = () => {
   const navigate = useNavigate();
   const [scans, setScans] = useState<Scan[]>([]);
@@ -246,12 +258,17 @@ const PhysiciansHome: FC = () => {
                 <strong>Created At:</strong> {scan.created_at}<br />
               </div>
 
-              <button onClick={() => handleResegmentClick(scan)}>
+              <button  style={styles.button}
+              onClick={() => handleResegmentClick(scan)}>
                   Resegment
                 </button>
 
               {scan.three_d_model_path && (
-                <button onClick={() =>{
+                <button
+
+                style={styles.button}
+                
+                onClick={() =>{
                   const modelPath = `http://127.0.1:8000${scan.three_d_model_path}`;
 const url = `/view-3d/${scan.segmentation_id}?file=${encodeURIComponent(modelPath)}`;
 window.open(url, '_blank');
@@ -260,7 +277,9 @@ window.open(url, '_blank');
                   View 3D
                 </button>
               ) }
-                <button onClick={() => handleReconstruct3D(scan)}>
+                <button 
+                style={styles.button}
+                onClick={() => handleReconstruct3D(scan)}>
                   Reconstruct 3D
                 </button>
 
