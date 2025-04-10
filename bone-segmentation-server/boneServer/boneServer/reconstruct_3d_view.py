@@ -151,7 +151,7 @@ def do_3d_reconstruction(folder_path, iso_level, save_stl):
                                                    step_size=1)
         mesh = trimesh.Trimesh(vertices=verts, faces=faces, vertex_normals=norms)
         # mesh = mesh.split(only_watertight=False)
-        filter_taubin(mesh, lamb=0.5, nu=-0.53, iterations=10)
+        filter_taubin(mesh, lamb=0.3, nu=-0.32, iterations=10)
         mesh.export(save_stl)
 
         return (True, f"STL saved to {save_stl}")
