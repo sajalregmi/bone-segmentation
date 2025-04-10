@@ -137,7 +137,7 @@ def do_3d_reconstruction(folder_path, iso_level, save_stl):
             arr_binary = (arr > 1).astype(np.float32)
             volume_3d[i] = arr_binary
         
-        volume_3d = binary_closing(volume_3d, structure=np.ones((3, 3, 3)))
+        volume_3d = binary_closing(volume_3d, structure=np.ones((1, 1, 1)))
             
         try:
             dz = float(first_ds.SliceThickness)
