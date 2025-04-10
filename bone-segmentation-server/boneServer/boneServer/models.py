@@ -30,6 +30,8 @@ class SegmentationRecord(models.Model):
     lower_threshold = models.IntegerField()
     upper_threshold = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
+    three_d_model_path = models.CharField(max_length=1024, null=True, blank=True)
+
 
     def __str__(self):
         return f"Segmentation by {self.physician.username} for {self.patient_email} - {self.created_at}"

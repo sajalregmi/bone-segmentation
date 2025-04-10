@@ -14,6 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import UserProfile, SegmentationRecord
 from django.utils import timezone
 from io import BytesIO
+import shutil
 
 
 def convert_to_hu(dicom_data):
@@ -40,7 +41,7 @@ def segment_bone_hu(image_hu, lower_hu=300, upper_hu=2000):
     binary_mask = (binary_mask * 255).astype(np.uint8)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 1))
     cleaned_mask = cv2.morphologyEx(binary_mask, cv2.MORPH_CLOSE, kernel)
-    segmented_bone = cv2.bitwise_and(image_hu, image_hu, mask=cleaned_mask)
+    segmented_bone = image_hu * (cleaned_mask > 0)
     return segmented_bone
 
 def decode_jwt_token(request):
@@ -176,11 +177,8 @@ def segment_images(request):
             # Convert to HU and segment
             image_hu = convert_to_hu(ds)
             segmented_image = segment_bone_hu(image_hu, lower_hu=lower_threshold, upper_hu=upper_threshold)
-
-            # Update the DICOM pixel data
-            # Make sure to handle DICOM metadata like BitsStored if needed
-            ds.PixelData = segmented_image.astype(np.int16).tobytes()
-
+            segmented_raw = hu_to_original_scale(segmented_image, ds)
+            ds.PixelData = segmented_raw.tobytes()
             # Save the new DICOM in the output folder
             output_path = os.path.join(output_folder, filename)
             ds.save_as(output_path)
@@ -201,6 +199,12 @@ def segment_images(request):
         "segmentation_id": seg_record.id
     }, status=200)
 
+
+def hu_to_original_scale(segmented_hu, dicom_data):
+    slope = dicom_data.RescaleSlope
+    intercept = dicom_data.RescaleIntercept
+    pixel_original  = (segmented_hu - intercept) / slope
+    return pixel_original.astype(np.uint16) 
 
 ############################
 # Fetch Recent Scans
@@ -241,6 +245,7 @@ def get_scans(request):
             "lower_threshold": seg.lower_threshold,
             "upper_threshold": seg.upper_threshold,
             "created_at": seg.created_at.isoformat(),
+            "three_d_model_path": seg.three_d_model_path,  # NEW
         })
 
     return JsonResponse({"segmentations": results}, status=200)
@@ -323,6 +328,32 @@ def serve_dicom_file(request, seg_id, filename):
     # Content type isn't strictly required but can be "application/dicom" or "application/octet-stream"
     return FileResponse(open(dicom_path, 'rb'), content_type='application/dicom')
 
+@csrf_exempt
+def get_scan(request, segmentation_id):
+    if request.method != 'GET':
+        return JsonResponse({"error": "GET required"}, status=405)
+
+    current_user, error_msg = decode_jwt_token(request)
+    if current_user is None:
+        return JsonResponse({"error": error_msg}, status=401)
+
+    # Optional: check that the current user is the one who created the scan
+    try:
+        scan = SegmentationRecord.objects.get(id=segmentation_id)
+    except SegmentationRecord.DoesNotExist:
+        return JsonResponse({"error": "Scan not found"}, status=404)
+
+    scan_data = {
+        "segmentation_id": scan.id,
+        "patient_email": scan.patient_email,
+        "output_folder_path": scan.output_folder_path,
+        "created_at": scan.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "upper_threshold": scan.upper_threshold,
+        "lower_threshold": scan.lower_threshold,
+        "three_d_model_path": scan.three_d_model_path,
+    }
+
+    return JsonResponse(scan_data, status=200)
 
 @csrf_exempt
 def wado_rs_frame(request, seg_id, filename, frame_number):
@@ -382,3 +413,68 @@ def wado_rs_frame(request, seg_id, filename, frame_number):
 
     # Return as "application/dicom" so Cornerstone can parse it
     return HttpResponse(buffer, content_type="application/dicom")
+
+@csrf_exempt
+def resegment_images(request, segmentation_id):
+    """
+    Re-segment an existing scan (identified by segmentation_id) with new thresholds.
+    - Will delete the old segmentation record and output folder, 
+      then re-run segmentation and create a NEW record.
+    - Expects JSON body with "lower_threshold", "upper_threshold".
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "POST method required"}, status=405)
+    current_user, error_msg = decode_jwt_token(request)
+    if current_user is None:
+        return JsonResponse({"error": error_msg}, status=401)
+    if current_user.userprofile.role.lower() != "physician":
+        return JsonResponse({"error": "Only physicians can perform segmentation."}, status=403)
+    try:
+        data = json.loads(request.body)
+        lower_threshold = int(data["lower_threshold"])
+        upper_threshold = int(data["upper_threshold"])
+    except (KeyError, json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Missing or invalid thresholds"}, status=400)
+    try:
+        old_record = SegmentationRecord.objects.get(id=segmentation_id)
+    except SegmentationRecord.DoesNotExist:
+        return JsonResponse({"error": "Segmentation record not found"}, status=404)
+
+    old_output_folder = old_record.output_folder_path
+    if os.path.exists(old_output_folder):
+        shutil.rmtree(old_output_folder) 
+
+    folder_path = old_record.folder_path
+    patient_email = old_record.patient_email
+
+    timestamp_str = timezone.now().strftime("%Y%m%d_%H%M%S")
+    new_output_folder = f"{folder_path}_segmented_{timestamp_str}"
+    os.makedirs(new_output_folder, exist_ok=True)
+
+    for filename in os.listdir(folder_path):
+        if filename.lower().endswith('.dcm'):
+            dicom_filepath = os.path.join(folder_path, filename)
+            ds = pydicom.dcmread(dicom_filepath)
+
+            image_hu = convert_to_hu(ds)
+            segmented_image = segment_bone_hu(image_hu, lower_hu=lower_threshold, upper_hu=upper_threshold)
+            ds.PixelData = segmented_image.astype(np.int16).tobytes()
+
+            output_path = os.path.join(new_output_folder, filename)
+            ds.save_as(output_path)
+
+    new_record = SegmentationRecord.objects.create(
+        physician=current_user,
+        patient_email=patient_email,
+        folder_path=folder_path,
+        output_folder_path=new_output_folder,
+        lower_threshold=lower_threshold,
+        upper_threshold=upper_threshold
+    )
+
+    old_record.delete()
+
+    return JsonResponse({
+        "message": "Re-segmentation completed successfully",
+        "new_segmentation_id": new_record.id
+    }, status=200)
