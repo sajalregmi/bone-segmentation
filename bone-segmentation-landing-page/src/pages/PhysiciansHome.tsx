@@ -31,6 +31,9 @@ const PhysiciansHome: FC = () => {
   const [scans, setScans] = useState<Scan[]>([]);
   const [imageIds, setImageIds] = useState<string[]>([]);
 
+  const [isSegmenting, setIsSegmenting] = useState<boolean>(false);
+  const [isReconstructing, setIsReconstructing] = useState<boolean>(false);
+
   const [resegmentThresholds, setResegmentThresholds] = useState<{
     lower: string;
     upper: string;
@@ -134,6 +137,7 @@ const PhysiciansHome: FC = () => {
     const doResegment = async () => {
       if (!resegmentThresholds.segmentationId) return; 
       try {
+        setIsSegmenting(true);
         const segId = resegmentThresholds.segmentationId;
         const requestBody = {
           lower_threshold: resegmentThresholds.lower,
@@ -155,6 +159,7 @@ const PhysiciansHome: FC = () => {
         }
         const data = await res.json();
         alert(`Re-segmentation completed. New segmentation ID: ${data.new_segmentation_id}`);
+        setIsSegmenting(false);
         setResegmentThresholds({ lower: '', upper: '', segmentationId: null });
         const updatedScansRes = await fetch('http://127.0.0.1:8000/get-scans/', {
           method: 'GET',
@@ -205,6 +210,7 @@ const PhysiciansHome: FC = () => {
 
   const handleReconstruct3D = async (scan: Scan) => {
     try {
+      setIsReconstructing(true);
       const url = `http://127.0.0.1:8000/reconstruct-3d/${scan.segmentation_id}/`;
       const body = {
         iso_level: 0.5,
@@ -232,6 +238,7 @@ const PhysiciansHome: FC = () => {
           'Content-Type': 'application/json'
         }
       });
+      setIsReconstructing(false);
       if (updatedScansRes.ok) {
         const updatedData = await updatedScansRes.json();
         setScans(updatedData.segmentations);
@@ -270,7 +277,9 @@ const PhysiciansHome: FC = () => {
                 
                 onClick={() =>{
                   const modelPath = `http://127.0.1:8000${scan.three_d_model_path}`;
+
 const url = `/view-3d/${scan.segmentation_id}?file=${encodeURIComponent(modelPath)}`;
+
 window.open(url, '_blank');
 
                 }}>
@@ -347,6 +356,24 @@ window.open(url, '_blank');
           <button type="submit">Segment</button>
         </form>
       </div>
+      {isSegmenting && (
+  <div className="modal-overlay">
+    <div className="modal-content">
+      <h3>Segmenting Images...</h3>
+      <div className="spinner" />
+    </div>
+  </div>
+)}
+
+{isReconstructing && (
+  <div className="modal-overlay">
+    <div className="modal-content">
+      <h3>Reconstructing 3D Model...</h3>
+      <div className="spinner" />
+    </div>
+  </div>
+)}
+
 
       {/* RIGHT PANEL */}
       <div className="right-panel">
@@ -358,6 +385,9 @@ window.open(url, '_blank');
         )}
       </div>
     </div>
+
+    
+    
   );
 };
 
