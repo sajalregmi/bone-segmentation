@@ -23,7 +23,6 @@ This modular, cloud-based platform performs **3D segmentation** and **surface re
 ### 2. Segmentation Server (Python)
 - **Dual‐Algorithm Segmentation**  
   - **Threshold‐Based Preprocessing**: Narrow Hounsfield unit ranges to isolate bone tissue  
-  - **CNN Refinement**: Deep learning model for pixel‐wise bone classification  
 - **3D Reconstruction**:  
   - **Marching Cubes** for iso-surface extraction  
   - Export to **STL** format  
@@ -37,11 +36,9 @@ This modular, cloud-based platform performs **3D segmentation** and **surface re
 
 ## 🧠 Algorithms & Techniques
 
-- **Threshold-Based Segmentation**: Adaptive thresholding to generate coarse bone masks  
-- **Neural Network Segmentation**: Convolutional model for high-fidelity boundary detection  
+- **Threshold-Based Segmentation**:  thresholding to generate coarse bone masks  
 - **Marching Cubes**: Iso-surface extraction to convert segmented volumes into polygonal meshes  
 - **Image Processing**: Morphological operations, smoothing, and artifact removal  
-
 ---
 
 ## 🛠️ Getting Started
